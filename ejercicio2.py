@@ -140,12 +140,16 @@ def pedir_datos():
         "plazo": plazo
     }
 
-
 def main():
+
     datos = pedir_datos()
 
-    print("\nDATOS REGISTRADOS")
-    print(datos)
+    print("\nSOLICITUD RECIBIDA")
+
+    ingresos = datos["salario"] + datos["otros"]
+
+    print(f"Ingresos totales: ${ingresos:,.0f}")
+
 
 
 if __name__ == "__main__":
