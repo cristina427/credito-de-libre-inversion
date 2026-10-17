@@ -139,17 +139,182 @@ def pedir_datos():
         "monto": monto_solicitado,
         "plazo": plazo
     }
+def calcular_cuota(monto, tasa, plazo):
+    return monto * (1 + tasa * plazo / 12) / plazo
+    
+def mostrar_tabla(monto, tasa, plazo):
+    capital_mes = monto / plazo
+    interes_mes = monto * tasa / 12
+    cuota = capital_mes + interes_mes
+
+    saldo = monto
+
+    print("\nTABLA DE AMORTIZACIÓN")
+    print("Mes | Cuota | Capital | Interés | Saldo")
+
+    for mes in range(1, plazo + 1):
+
+        saldo -= capital_mes
+
+        if mes == plazo:
+            saldo = 0
+
+        print(
+            f"{mes:2} | "
+            f"${cuota:,.0f} | "
+            f"${capital_mes:,.0f} | "
+            f"${interes_mes:,.0f} | "
+            f"${saldo:,.0f}"
+        )    
 
 def main():
 
     datos = pedir_datos()
 
-    print("\nSOLICITUD RECIBIDA")
+    tasas = {
+        "INDEFINIDO": 0.18,
+        "FIJO": 0.22,
+        "SERVICIOS": 0.26,
+        "INDEPENDIENTE": 0.30
+    }
+
+    puntos_contrato = {
+        "INDEFINIDO": 20,
+        "FIJO": 15,
+        "SERVICIOS": 10,
+        "INDEPENDIENTE": 5
+    }
+
+    tasa = tasas[datos["contrato"]]
 
     ingresos = datos["salario"] + datos["otros"]
 
-    print(f"Ingresos totales: ${ingresos:,.0f}")
+    capacidad = 0.40 * (ingresos - datos["deudas"])
 
+    cuota = calcular_cuota(
+        datos["monto"],
+        tasa,
+        datos["plazo"]
+    )
+
+    print("\nRESUMEN")
+    print("Solicitante:", datos["nombre"])
+    print(f"Ingresos totales: ${ingresos:,.0f}")
+    print(f"Capacidad de pago: ${capacidad:,.0f}")
+    print(f"Tasa anual: {tasa:.0%}")
+    print(f"Cuota estimada: ${cuota:,.0f}")
+
+    if (
+        datos["reportado"]
+        or datos["antiguedad"] < 6
+        or capacidad <= 0
+    ):
+
+        print("\nCRÉDITO RECHAZADO: no cumple una condición básica.")
+
+        if datos["reportado"]:
+            print("- Está reportado en centrales de riesgo.")
+
+        if datos["antiguedad"] < 6:
+            print("- Tiene menos de 6 meses de antigüedad laboral.")
+
+        if capacidad <= 0:
+            print("- Su capacidad de pago es negativa o nula.")
+
+        return
+
+    puntos_antiguedad = (
+        min(datos["antiguedad"] / 36, 1) * 30
+    )
+
+    relacion = cuota / ingresos if ingresos > 0 else 1
+
+    puntos_relacion = max(
+        0,
+        30 * (1 - relacion)
+    )
+
+    puntos_edad = (
+        20 if 25 <= datos["edad"] <= 55
+        else 10
+    )
+
+    puntaje = (
+        puntos_antiguedad
+        + puntos_relacion
+        + puntos_contrato[datos["contrato"]]
+        + puntos_edad
+    )
+
+    print(f"\nPuntaje de riesgo: {puntaje:.1f}/100 puntos")
+
+    if puntaje < 60:
+        print("CRÉDITO RECHAZADO: puntaje menor a 60.")
+        return
+
+    aprobado = datos["monto"]
+
+    while aprobado >= 1_000_000:
+
+        if (
+            calcular_cuota(
+                aprobado,
+                tasa,
+                datos["plazo"]
+            )
+            <= capacidad
+        ):
+            break
+
+        if aprobado == 1_000_000:
+            aprobado = 0
+            break
+
+        aprobado -= 500_000
+
+    if aprobado == 0:
+
+        print(
+            "CRÉDITO RECHAZADO: "
+            "no alcanza para el monto mínimo."
+        )
+
+    elif aprobado == datos["monto"]:
+
+        print(
+            f"\nCRÉDITO APROBADO "
+            f"por ${aprobado:,.0f}"
+        )
+
+        mostrar_tabla(
+            aprobado,
+            tasa,
+            datos["plazo"]
+        )
+
+    else:
+
+        print(
+            f"\nSe solicitó "
+            f"${datos['monto']:,.0f}"
+        )
+
+        print(
+            f"CRÉDITO APROBADO "
+            f"por un monto menor: "
+            f"${aprobado:,.0f}"
+        )
+
+        print(
+            f"Nueva cuota: "
+            f"${calcular_cuota(aprobado, tasa, datos['plazo']):,.0f}"
+        )
+
+        mostrar_tabla(
+            aprobado,
+            tasa,
+            datos["plazo"]
+        )
 
 
 if __name__ == "__main__":
